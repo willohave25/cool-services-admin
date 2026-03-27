@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accès Sécurisé - Cool Services</title>
+    <script src="https://cdn.jsdelivr.net"></script>
+    <link href="https://cdnjs.cloudflare.com" rel="stylesheet">
+    <style>
+        :root { --primary: #003399; --secondary: #e60000; --bg: #f8fafc; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        
+        /* LOGIN STYLE */
+        #login-gate { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; max-width: 400px; width: 100%; border-top: 5px solid var(--secondary); }
+        #login-gate img { max-width: 150px; margin-bottom: 20px; }
+        #login-gate input { width: 80%; padding: 12px; margin: 15px 0; border: 1px solid #ddd; border-radius: 8px; text-align: center; font-size: 18px; letter-spacing: 5px; }
+        
+        /* ADMIN PANEL STYLE (Caché par défaut) */
+        #admin-panel { display: none; width: 100%; max-width: 1000px; align-self: flex-start; }
+        .header { text-align: center; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 30px; border-top: 5px solid var(--secondary); }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 25px; }
+        .grid-form { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        input, select { padding: 12px; border: 1px solid #ddd; border-radius: 8px; }
+        button { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
+        th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
+        .btn-del { color: var(--secondary); cursor: pointer; background: none; border: none; font-size: 18px; }
+        .preview-img { width: 45px; height: 45px; object-fit: cover; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+<!-- PORTE DE SÉCURITÉ -->
+<div id="login-gate">
+    <img src="https://coolservicesagenceimmobiliere-ci.com">
+    <h3>Accès Gestionnaire</h3>
+    <p>Entrez le code PIN pour continuer</p>
+    <input type="password" id="pin-code" placeholder="••••" maxlength="4">
+    <button onclick="checkPin()">SE CONNECTER</button>
+    <p id="error-msg" style="color:red; display:none; margin-top:10px;">Code incorrect !</p>
+</div>
+
+<!-- PANNEAU D'ADMINISTRATION -->
+<div id="admin-panel">
+    <div class="header">
+        <img src="https://coolservicesagenceimmobiliere-ci.com" style="max-width:150px">
+        <h2 style="color:var(--primary); margin:10px 0;">GESTION DES ACTUALITÉS</h2>
+    </div>
+
+    <div class="card">
+        <h3><i class="fas fa-plus-circle"></i> Ajouter un contenu</h3>
+        <form id="addForm" class="grid-form">
+            <input type="text" id="titre" placeholder="Titre de l'actu" required>
+            <select id="type"><option value="photo">📸 Photo</option><option value="video">🎥 Vidéo</option></select>
+            <input type="text" id="fichier_url" placeholder="Nom du fichier (ex: villa.mp4)" required>
+            <input type="number" id="ordre" value="1">
+            <label><input type="checkbox" id="vedette"> Vedette</label>
+            <button type="submit" style="grid-column: span 2;">PUBLIER SUR LE SITE</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h3><i class="fas fa-list"></i> Contenu Actuel</h3>
+        <table>
+            <thead><tr><th>Média</th><th>Titre</th><th>Type</th><th>⭐</th><th>Action</th></tr></thead>
+            <tbody id="newsList"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // CONFIGURATION
+    const PIN_SECRET = "2026"; // CHANGE TON CODE ICI (Actuellement 2026)
+    const SB_URL = "https://ilycnutphhmuvaonkrsa.supabase.co";
+    const SB_KEY = "sb_publishable_1O960JacjvpleoB-jTqiag_7Ou-4Y0N";
+    const supabase = supabase.createClient(SB_URL, SB_KEY);
+    const MEDIA_ROOT = "https://medias.w2k-digital.com";
+
+    // 1. VÉRIFICATION DU PIN
+    function checkPin() {
+        const input = document.getElementById('pin-code').value;
+        if(input === PIN_SECRET) {
+            document.getElementById('login-gate').style.display = 'none';
+            document.getElementById('admin-panel').style.display = 'block';
+            document.body.style.alignItems = 'flex-start';
+            fetchNews();
+        } else {
+            document.getElementById('error-msg').style.display = 'block';
+        }
+    }
+
+    // 2. GESTION SUPABASE
+    async function fetchNews() {
+        const { data, error } = await supabase.from('cesai_actualites').select('*').order('ordre', { ascending: true });
+        if (!error) renderNews(data);
+    }
+
+    function renderNews(data) {
+        document.getElementById('newsList').innerHTML = data.map(item => `
+            <tr>
+                <td><img src="${item.type === 'photo' ? MEDIA_ROOT + item.fichier_url : 'https://cdn-icons-png.flaticon.com'}" class="preview-img"></td>
+                <td><strong>${item.titre}</strong></td>
+                <td>${item.type.toUpperCase()}</td>
+                <td>${item.vedette ? '⭐' : '-'}</td>
+                <td><button class="btn-del" onclick="deleteNews(${item.id})"><i class="fas fa-trash"></i></button></td>
+            </tr>
+        `).join('');
+    }
+
+    document.getElementById('addForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const payload = {
+            titre: document.getElementById('titre').value,
+            type: document.getElementById('type').value,
+            fichier_url: document.getElementById('fichier_url').value,
+            ordre: parseInt(document.getElementById('ordre').value),
+            vedette: document.getElementById('vedette').checked,
+            actif: true
+        };
+        const { error } = await supabase.from('cesai_actualites').insert([payload]);
+        if (!error) { e.target.reset(); fetchNews(); }
+    };
+
+    async function deleteNews(id) {
+        if (confirm("Supprimer ?")) {
+            await supabase.from('cesai_actualites').delete().eq('id', id);
+            fetchNews();
+        }
+    }
+</script>
+</body>
+</html>
