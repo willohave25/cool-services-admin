@@ -4,82 +4,92 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Accès Sécurisé - Cool Services</title>
-    <script src="https://cdn.jsdelivr.net"></script>
-    <link href="https://cdnjs.cloudflare.com" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
         :root { --primary: #003399; --secondary: #e60000; --bg: #f8fafc; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        
+
         /* LOGIN STYLE */
         #login-gate { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; max-width: 400px; width: 100%; border-top: 5px solid var(--secondary); }
         #login-gate img { max-width: 150px; margin-bottom: 20px; }
         #login-gate input { width: 80%; padding: 12px; margin: 15px 0; border: 1px solid #ddd; border-radius: 8px; text-align: center; font-size: 18px; letter-spacing: 5px; }
-        
+
         /* ADMIN PANEL STYLE (Caché par défaut) */
         #admin-panel { display: none; width: 100%; max-width: 1000px; align-self: flex-start; }
         .header { text-align: center; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 30px; border-top: 5px solid var(--secondary); }
         .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 25px; }
         .grid-form { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        input, select { padding: 12px; border: 1px solid #ddd; border-radius: 8px; }
-        button { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; }
+        input, select { padding: 12px; border: 1px solid #ddd; border-radius: 8px; width: 100%; box-sizing: border-box; }
+        button.btn-submit { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; }
+        button.btn-login { background: var(--primary); color: white; border: none; padding: 12px 30px; border-radius: 8px; cursor: pointer; font-weight: bold; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
         th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
         .btn-del { color: var(--secondary); cursor: pointer; background: none; border: none; font-size: 18px; }
         .preview-img { width: 45px; height: 45px; object-fit: cover; border-radius: 5px; }
+        .msg-success { background: #d4edda; color: #155724; padding: 10px; border-radius: 8px; margin-top: 10px; display: none; }
+        .msg-error { background: #f8d7da; color: #721c24; padding: 10px; border-radius: 8px; margin-top: 10px; display: none; }
+        .hint { font-size: 12px; color: #888; margin: 0; padding: 0; }
     </style>
 </head>
 <body>
 
 <!-- PORTE DE SÉCURITÉ -->
 <div id="login-gate">
-    <img src="https://coolservicesagenceimmobiliere-ci.com">
+    <img src="logocesai-trans.png" alt="Logo CESAI Cool Services">
     <h3>Accès Gestionnaire</h3>
     <p>Entrez le code PIN pour continuer</p>
-    <input type="password" id="pin-code" placeholder="••••" maxlength="4">
-    <button onclick="checkPin()">SE CONNECTER</button>
+    <input type="password" id="pin-code" placeholder="••••" maxlength="4" onkeydown="if(event.key==='Enter') checkPin()">
+    <br>
+    <button class="btn-login" onclick="checkPin()">SE CONNECTER</button>
     <p id="error-msg" style="color:red; display:none; margin-top:10px;">Code incorrect !</p>
 </div>
 
 <!-- PANNEAU D'ADMINISTRATION -->
 <div id="admin-panel">
     <div class="header">
-        <img src="https://coolservicesagenceimmobiliere-ci.com" style="max-width:150px">
+        <img src="logocesai-trans.png" alt="Logo CESAI" style="max-width:150px">
         <h2 style="color:var(--primary); margin:10px 0;">GESTION DES ACTUALITÉS</h2>
     </div>
 
     <div class="card">
         <h3><i class="fas fa-plus-circle"></i> Ajouter un contenu</h3>
+        <p class="hint">Pour les flyers : entrez le nom du fichier (ex: <code>cesai/flyer1.webp</code>). Pour les vidéos : nom du fichier (ex: <code>cesai/video1.mp4</code>).<br>Les fichiers doivent être uploadés sur <strong>medias.w2k-digital.com</strong></p>
+        <br>
         <form id="addForm" class="grid-form">
             <input type="text" id="titre" placeholder="Titre de l'actu" required>
-            <select id="type"><option value="photo">📸 Photo</option><option value="video">🎥 Vidéo</option></select>
-            <input type="text" id="fichier_url" placeholder="Nom du fichier (ex: villa.mp4)" required>
-            <input type="number" id="ordre" value="1">
-            <label><input type="checkbox" id="vedette"> Vedette</label>
-            <button type="submit" style="grid-column: span 2;">PUBLIER SUR LE SITE</button>
+            <select id="type">
+                <option value="flyer">📸 Flyer / Photo</option>
+                <option value="video">🎥 Vidéo</option>
+            </select>
+            <input type="text" id="fichier_url" placeholder="Chemin fichier (ex: cesai/flyer1.webp)" required style="grid-column: span 2;">
+            <input type="number" id="ordre" value="1" min="1" placeholder="Ordre d'affichage">
+            <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="vedette" style="width:auto;"> Mettre en vedette (vidéo principale)</label>
+            <button type="submit" class="btn-submit" style="grid-column: span 2;">PUBLIER SUR LE SITE</button>
         </form>
+        <div class="msg-success" id="msgSuccess"><i class="fas fa-check-circle"></i> Contenu publié avec succès !</div>
+        <div class="msg-error" id="msgError"></div>
     </div>
 
     <div class="card">
         <h3><i class="fas fa-list"></i> Contenu Actuel</h3>
         <table>
-            <thead><tr><th>Média</th><th>Titre</th><th>Type</th><th>⭐</th><th>Action</th></tr></thead>
-            <tbody id="newsList"></tbody>
+            <thead><tr><th>Aperçu</th><th>Titre</th><th>Type</th><th>Ordre</th><th>⭐</th><th>Action</th></tr></thead>
+            <tbody id="newsList"><tr><td colspan="6" style="text-align:center;">Chargement...</td></tr></tbody>
         </table>
     </div>
 </div>
 
 <script>
     // CONFIGURATION
-    const PIN_SECRET = "2026"; // CHANGE TON CODE ICI (Actuellement 2026)
-    const SB_URL = "https://ilycnutphhmuvaonkrsa.supabase.co";
-    const SB_KEY = "sb_publishable_1O960JacjvpleoB-jTqiag_7Ou-4Y0N";
-    const supabase = supabase.createClient(SB_URL, SB_KEY);
-    const MEDIA_ROOT = "https://medias.w2k-digital.com";
+    const PIN_SECRET = "2026";
+    const API_BASE = "https://api.coolservicesagenceimmobiliere-ci.com/api/actualites";
+    const ADMIN_KEY = "cesai-admin-2026";
+    const MEDIA_ROOT = "https://medias.w2k-digital.com/";
 
     // 1. VÉRIFICATION DU PIN
     function checkPin() {
         const input = document.getElementById('pin-code').value;
-        if(input === PIN_SECRET) {
+        if (input === PIN_SECRET) {
             document.getElementById('login-gate').style.display = 'none';
             document.getElementById('admin-panel').style.display = 'block';
             document.body.style.alignItems = 'flex-start';
@@ -89,43 +99,87 @@
         }
     }
 
-    // 2. GESTION SUPABASE
-    async function fetchNews() {
-        const { data, error } = await supabase.from('cesai_actualites').select('*').order('ordre', { ascending: true });
-        if (!error) renderNews(data);
+    // 2. CHARGER LES ACTUALITÉS
+    function fetchNews() {
+        fetch(API_BASE)
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) renderNews(res.data);
+                else document.getElementById('newsList').innerHTML = '<tr><td colspan="6">Erreur de chargement</td></tr>';
+            })
+            .catch(() => {
+                document.getElementById('newsList').innerHTML = '<tr><td colspan="6" style="color:red;">Impossible de contacter le serveur</td></tr>';
+            });
     }
 
     function renderNews(data) {
-        document.getElementById('newsList').innerHTML = data.map(item => `
-            <tr>
-                <td><img src="${item.type === 'photo' ? MEDIA_ROOT + item.fichier_url : 'https://cdn-icons-png.flaticon.com'}" class="preview-img"></td>
+        if (!data.length) {
+            document.getElementById('newsList').innerHTML = '<tr><td colspan="6" style="text-align:center;color:#888;">Aucun contenu publié</td></tr>';
+            return;
+        }
+        document.getElementById('newsList').innerHTML = data.map(item => {
+            const isVideo = item.type === 'video';
+            const previewSrc = isVideo
+                ? 'https://cdn-icons-png.flaticon.com/512/1384/1384060.png'
+                : MEDIA_ROOT + item.fichier_url;
+            return `<tr>
+                <td><img src="${previewSrc}" class="preview-img" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1384/1384060.png'"></td>
                 <td><strong>${item.titre}</strong></td>
                 <td>${item.type.toUpperCase()}</td>
+                <td>${item.ordre}</td>
                 <td>${item.vedette ? '⭐' : '-'}</td>
-                <td><button class="btn-del" onclick="deleteNews(${item.id})"><i class="fas fa-trash"></i></button></td>
-            </tr>
-        `).join('');
+                <td><button class="btn-del" onclick="deleteNews(${item.id})" title="Supprimer"><i class="fas fa-trash"></i></button></td>
+            </tr>`;
+        }).join('');
     }
 
-    document.getElementById('addForm').onsubmit = async (e) => {
+    // 3. AJOUTER
+    document.getElementById('addForm').onsubmit = function(e) {
         e.preventDefault();
         const payload = {
             titre: document.getElementById('titre').value,
             type: document.getElementById('type').value,
             fichier_url: document.getElementById('fichier_url').value,
-            ordre: parseInt(document.getElementById('ordre').value),
-            vedette: document.getElementById('vedette').checked,
-            actif: true
+            ordre: parseInt(document.getElementById('ordre').value) || 1,
+            vedette: document.getElementById('vedette').checked
         };
-        const { error } = await supabase.from('cesai_actualites').insert([payload]);
-        if (!error) { e.target.reset(); fetchNews(); }
+        fetch(API_BASE, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Api-Key': ADMIN_KEY },
+            body: JSON.stringify(payload)
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                e.target.reset();
+                document.getElementById('msgSuccess').style.display = 'block';
+                setTimeout(() => document.getElementById('msgSuccess').style.display = 'none', 3000);
+                fetchNews();
+            } else {
+                const el = document.getElementById('msgError');
+                el.textContent = 'Erreur: ' + (res.error || 'Inconnue');
+                el.style.display = 'block';
+                setTimeout(() => el.style.display = 'none', 4000);
+            }
+        })
+        .catch(() => {
+            const el = document.getElementById('msgError');
+            el.textContent = 'Impossible de contacter le serveur';
+            el.style.display = 'block';
+        });
     };
 
-    async function deleteNews(id) {
-        if (confirm("Supprimer ?")) {
-            await supabase.from('cesai_actualites').delete().eq('id', id);
-            fetchNews();
-        }
+    // 4. SUPPRIMER
+    function deleteNews(id) {
+        if (!confirm('Supprimer ce contenu ?')) return;
+        fetch(API_BASE + '/' + id, {
+            method: 'DELETE',
+            headers: { 'X-Api-Key': ADMIN_KEY }
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) fetchNews();
+        });
     }
 </script>
 </body>
