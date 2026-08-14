@@ -1,0 +1,19 @@
+{
+  "name": "CSAI Admin — Gestion Actualites",
+  "short_name": "CSAI Admin",
+  "description": "Administration des actualites Cool Services Agence Immobiliere",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#003399",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "logocesai-trans.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
