@@ -119,10 +119,11 @@
 
 <script>
     const PIN_SECRET = "2026";
-    const API_BASE = "https://api.coolservicesagenceimmobiliere-ci.com/api/actualites";
-    const API_UPLOAD = "https://api.coolservicesagenceimmobiliere-ci.com/api/upload";
+    const API_HOST = "https://api.coolservicesagenceimmobiliere-ci.com";
+    const API_BASE = API_HOST + "/api/actualites";
+    const API_UPLOAD = API_HOST + "/api/upload";
     const ADMIN_KEY = "cesai-admin-2026";
-    const MEDIA_ROOT = "https://medias.w2k-digital.com/";
+    const MEDIA_ROOT = API_HOST + "/uploads/";
 
     let uploadedFichierUrl = null;
 
