@@ -1,5 +1,5 @@
 /* Service Worker — CSAI Admin PWA */
-var CACHE_NAME = 'csai-admin-v1';
+var CACHE_NAME = 'csai-admin-v2';
 
 self.addEventListener('install', function (e) {
   e.waitUntil(
@@ -24,6 +24,7 @@ self.addEventListener('activate', function (e) {
 
 self.addEventListener('fetch', function (e) {
   if (e.request.method !== 'GET') return;
+  if (new URL(e.request.url).origin !== self.location.origin) return; // ne jamais mettre l'API en cache
   e.respondWith(
     fetch(e.request).then(function (response) {
       var clone = response.clone();

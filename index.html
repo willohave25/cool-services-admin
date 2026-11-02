@@ -51,6 +51,21 @@
         .progress-bar-wrap .bar-fill { background: var(--primary); height: 100%; width: 0%; transition: width 0.3s; border-radius: 8px; }
         .progress-bar-wrap p { font-size: 12px; color: #888; margin: 4px 0 0; }
         button.btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+        .topbar { display:flex; justify-content:flex-end; margin-bottom:10px; }
+        .btn-logout { background:none; border:1px solid #ddd; border-radius:8px; padding:8px 14px; cursor:pointer; color:#555; }
+        textarea { padding:12px; border:1px solid #ddd; border-radius:8px; width:100%; box-sizing:border-box; font-family:inherit; min-height:70px; resize:vertical; grid-column: span 2; }
+        .actions { white-space:nowrap; }
+        .actions button { background:none; border:none; cursor:pointer; font-size:17px; padding:6px; color:var(--primary); }
+        .actions .btn-del { color:var(--secondary); }
+        .tag-off { background:#eee; color:#777; border-radius:10px; padding:2px 8px; font-size:11px; }
+        tr.inactive td { opacity:.5; }
+        .tbl-wrap { overflow-x:auto; }
+        #editModal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1000; align-items:center; justify-content:center; padding:16px; }
+        #editModal .box { background:#fff; border-radius:12px; padding:22px; width:100%; max-width:480px; display:grid; gap:12px; max-height:90vh; overflow:auto; }
+        #editModal .row { display:flex; gap:10px; }
+        #editModal .row button { flex:1; padding:12px; border-radius:8px; border:none; cursor:pointer; font-weight:bold; }
+        .btn-cancel { background:#eee; } .btn-save { background:var(--primary); color:#fff; }
+        @media (max-width:640px){ .grid-form { grid-template-columns:1fr; } .upload-zone,#previewBox,.progress-bar-wrap,textarea,#btnSubmit{ grid-column: span 1 !important; } body{padding:10px;} }
     </style>
 </head>
 <body>
@@ -60,7 +75,7 @@
     <img src="logocesai-trans.png" alt="Logo CESAI Cool Services">
     <h3>Accès Gestionnaire</h3>
     <p>Entrez le code PIN pour continuer</p>
-    <input type="password" id="pin-code" placeholder="••••" maxlength="4" onkeydown="if(event.key==='Enter') checkPin()">
+    <input type="password" id="pin-code" placeholder="••••" maxlength="12" inputmode="numeric" autocomplete="off" onkeydown="if(event.key==='Enter') checkPin()">
     <br>
     <button class="btn-login" onclick="checkPin()">SE CONNECTER</button>
     <p id="error-msg" style="color:red; display:none; margin-top:10px;">Code incorrect !</p>
@@ -68,6 +83,7 @@
 
 <!-- PANNEAU D'ADMINISTRATION -->
 <div id="admin-panel">
+    <div class="topbar"><button class="btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Déconnexion</button></div>
     <div class="header">
         <img src="logocesai-trans.png" alt="Logo CESAI" style="max-width:150px">
         <h2 style="color:var(--primary); margin:10px 0;">GESTION DES ACTUALITÉS</h2>
@@ -106,8 +122,9 @@
                 <p id="progressLabel">Envoi en cours...</p>
             </div>
 
+            <textarea id="description" maxlength="2000" placeholder="Description (facultatif — affichée sous les flyers)"></textarea>
             <input type="number" id="ordre" value="1" min="1" placeholder="Ordre d'affichage">
-            <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="vedette" style="width:auto;"> Mettre en vedette (vidéo principale)</label>
+            <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="vedette" style="width:auto;"> Mettre en vedette (« À la une » — une seule par type)</label>
             <button type="submit" class="btn-submit" id="btnSubmit" style="grid-column: span 2;" disabled>CHOISIR UN FICHIER D'ABORD</button>
         </form>
         <div class="msg-success" id="msgSuccess"><i class="fas fa-check-circle"></i> Contenu publié avec succès !</div>
@@ -116,224 +133,232 @@
 
     <div class="card">
         <h3><i class="fas fa-list"></i> Contenu Actuel</h3>
-        <table>
-            <thead><tr><th>Aperçu</th><th>Titre</th><th>Type</th><th>Ordre</th><th>⭐</th><th>Action</th></tr></thead>
+        <div class="tbl-wrap"><table>
+            <thead><tr><th>Aperçu</th><th>Titre</th><th>Type</th><th>Ordre</th><th>⭐</th><th>Actions</th></tr></thead>
             <tbody id="newsList"><tr><td colspan="6" style="text-align:center;">Chargement...</td></tr></tbody>
-        </table>
+        </table></div>
     </div>
 </div>
 
+<div id="editModal"><div class="box">
+    <h3 style="margin:0">Modifier le contenu</h3>
+    <input type="text" id="eTitre" maxlength="255" placeholder="Titre">
+    <textarea id="eDesc" maxlength="2000" placeholder="Description" style="grid-column:auto"></textarea>
+    <input type="number" id="eOrdre" min="1" placeholder="Ordre">
+    <label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="eVedette" style="width:auto;"> En vedette</label>
+    <label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="eActif" style="width:auto;"> Visible sur le site</label>
+    <div class="msg-error" id="eErr"></div>
+    <div class="row"><button class="btn-cancel" onclick="closeEdit()">Annuler</button><button class="btn-save" onclick="saveEdit()">Enregistrer</button></div>
+</div></div>
+
 <script>
-    const PIN_SECRET = "2026";
     const API_HOST = "https://api.coolservicesagenceimmobiliere-ci.com";
     const API_BASE = API_HOST + "/api/actualites";
     const API_UPLOAD = API_HOST + "/api/upload";
-    const ADMIN_KEY = "cesai-admin-2026";
+    const API_AUTH = API_HOST + "/api/auth";
     const MEDIA_ROOT = API_HOST + "/uploads/";
+    const NO_PREVIEW = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="45" height="45"><rect width="45" height="45" rx="6" fill="#e5e9f5"/><polygon points="17,13 33,22.5 17,32" fill="#003399"/></svg>');
 
-    let uploadedFichierUrl = null;
+    let uploadedFichierUrl = null, uploadedName = null, currentXhr = null, items = [], editId = null;
 
-    // 1. PIN
+    const $ = id => document.getElementById(id);
+    function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function flash(id, msg, ms) { const el = $(id); if (msg) el.textContent = msg; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', ms || 4000); }
+
+    // ===== SESSION (jeton serveur, 12 h) =====
+    function getToken() { try { return localStorage.getItem('cesai_token'); } catch(e) { return null; } }
+    function setToken(t) { try { t ? localStorage.setItem('cesai_token', t) : localStorage.removeItem('cesai_token'); } catch(e) {} }
+    function authHeaders(extra) { return Object.assign({ 'Authorization': 'Bearer ' + getToken() }, extra || {}); }
+
+    function showPanel() {
+        $('login-gate').style.display = 'none';
+        $('admin-panel').style.display = 'block';
+        document.body.style.alignItems = 'flex-start';
+        fetchNews();
+    }
+    function logout() { setToken(null); location.reload(); }
+    function sessionExpired() { setToken(null); alert('Session expirée, veuillez vous reconnecter.'); location.reload(); }
+
     function checkPin() {
-        const input = document.getElementById('pin-code').value;
-        if (input === PIN_SECRET) {
-            document.getElementById('login-gate').style.display = 'none';
-            document.getElementById('admin-panel').style.display = 'block';
-            document.body.style.alignItems = 'flex-start';
-            fetchNews();
-        } else {
-            document.getElementById('error-msg').style.display = 'block';
-        }
+        const pin = $('pin-code').value.trim();
+        const err = $('error-msg');
+        err.style.display = 'none';
+        fetch(API_AUTH + '/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin }) })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) { setToken(res.token); $('pin-code').value = ''; showPanel(); }
+                else { err.textContent = res.error || 'Code incorrect !'; err.style.display = 'block'; }
+            })
+            .catch(() => { err.textContent = 'Impossible de contacter le serveur'; err.style.display = 'block'; });
     }
 
-    // 2. GESTION FICHIER
-    document.getElementById('fichierInput').addEventListener('change', function() {
+    // Reprise de session au chargement
+    if (getToken()) {
+        fetch(API_AUTH + '/check', { headers: authHeaders() }).then(r => { if (r.ok) showPanel(); else setToken(null); }).catch(() => {});
+    }
+
+    // ===== FICHIER =====
+    $('fichierInput').addEventListener('change', function() {
         const file = this.files[0];
         if (!file) return;
-        showPreview(file);
-        uploadFile(file);
+        startFile(file);
     });
-
-    // Drag & drop
-    const zone = document.getElementById('uploadZone');
+    const zone = $('uploadZone');
     zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
     zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
     zone.addEventListener('drop', e => {
         e.preventDefault();
         zone.classList.remove('drag-over');
         const file = e.dataTransfer.files[0];
-        if (file) { document.getElementById('fichierInput').files = e.dataTransfer.files; showPreview(file); uploadFile(file); }
+        if (file) { $('fichierInput').files = e.dataTransfer.files; startFile(file); }
     });
+
+    function startFile(file) {
+        const okType = /^(image\/(jpeg|png|webp|gif)|video\/(mp4|webm))$/.test(file.type);
+        if (!okType) { flash('msgError', 'Format non accepté. Utilisez JPG, PNG, WEBP, GIF, MP4 ou WEBM.', 6000); $('fichierInput').value = ''; return; }
+        if (file.size > 50 * 1024 * 1024) { flash('msgError', 'Fichier trop lourd (' + (file.size/1024/1024).toFixed(0) + ' Mo). Maximum 50 Mo.', 6000); $('fichierInput').value = ''; return; }
+        showPreview(file);
+        uploadFile(file);
+    }
 
     function showPreview(file) {
         const isVideo = file.type.startsWith('video/');
-        const box = document.getElementById('previewBox');
-        const img = document.getElementById('previewImg');
-        const vid = document.getElementById('previewVid');
-        document.getElementById('previewName').textContent = file.name + ' (' + (file.size / 1024 / 1024).toFixed(1) + ' Mo)';
-        if (isVideo) {
-            vid.src = URL.createObjectURL(file);
-            vid.style.display = 'block';
-            img.style.display = 'none';
-            document.getElementById('type').value = 'video';
-        } else {
-            img.src = URL.createObjectURL(file);
-            img.style.display = 'block';
-            vid.style.display = 'none';
-            document.getElementById('type').value = 'flyer';
-        }
-        box.style.display = 'flex';
+        const img = $('previewImg'), vid = $('previewVid');
+        $('previewName').textContent = file.name + ' (' + (file.size / 1024 / 1024).toFixed(1) + ' Mo)';
+        if (isVideo) { vid.src = URL.createObjectURL(file); vid.style.display = 'block'; img.style.display = 'none'; $('type').value = 'video'; }
+        else { img.src = URL.createObjectURL(file); img.style.display = 'block'; vid.style.display = 'none'; $('type').value = 'flyer'; }
+        $('previewBox').style.display = 'flex';
         zone.style.display = 'none';
     }
 
+    // Retire le fichier ; s'il est déjà sur le serveur mais pas publié, on le supprime
     function clearFile() {
-        uploadedFichierUrl = null;
-        document.getElementById('fichierInput').value = '';
-        document.getElementById('previewBox').style.display = 'none';
-        document.getElementById('uploadZone').style.display = 'block';
-        document.getElementById('progressWrap').style.display = 'none';
-        document.getElementById('btnSubmit').disabled = true;
-        document.getElementById('btnSubmit').textContent = 'CHOISIR UN FICHIER D\'ABORD';
+        if (currentXhr) { currentXhr.abort(); currentXhr = null; }
+        if (uploadedName) {
+            fetch(API_UPLOAD + '/' + encodeURIComponent(uploadedName), { method: 'DELETE', headers: authHeaders() }).catch(() => {});
+        }
+        resetFileUi();
+    }
+    function resetFileUi() {
+        uploadedFichierUrl = null; uploadedName = null;
+        $('fichierInput').value = '';
+        $('previewBox').style.display = 'none';
+        $('uploadZone').style.display = 'block';
+        $('progressWrap').style.display = 'none';
+        $('btnSubmit').disabled = true;
+        $('btnSubmit').textContent = "CHOISIR UN FICHIER D'ABORD";
     }
 
     function uploadFile(file) {
-        const btn = document.getElementById('btnSubmit');
-        const wrap = document.getElementById('progressWrap');
-        const fill = document.getElementById('barFill');
-        const label = document.getElementById('progressLabel');
+        const btn = $('btnSubmit'), fill = $('barFill'), label = $('progressLabel');
+        btn.disabled = true; btn.textContent = 'Envoi en cours...';
+        $('progressWrap').style.display = 'block'; fill.style.width = '0%'; label.textContent = 'Envoi en cours...';
 
-        btn.disabled = true;
-        btn.textContent = 'Envoi en cours...';
-        wrap.style.display = 'block';
-        fill.style.width = '0%';
-        label.textContent = 'Envoi en cours...';
-
-        const formData = new FormData();
-        formData.append('fichier', file);
-
-        const xhr = new XMLHttpRequest();
+        const fd = new FormData(); fd.append('fichier', file);
+        const xhr = new XMLHttpRequest(); currentXhr = xhr;
         xhr.open('POST', API_UPLOAD);
-        xhr.setRequestHeader('X-Api-Key', ADMIN_KEY);
-
-        xhr.upload.onprogress = function(e) {
-            if (e.lengthComputable) {
-                const pct = Math.round(e.loaded / e.total * 100);
-                fill.style.width = pct + '%';
-                label.textContent = 'Envoi : ' + pct + '%';
-            }
-        };
-
+        xhr.setRequestHeader('Authorization', 'Bearer ' + getToken());
+        xhr.upload.onprogress = e => { if (e.lengthComputable) { const p = Math.round(e.loaded / e.total * 100); fill.style.width = p + '%'; label.textContent = 'Envoi : ' + p + '%'; } };
         xhr.onload = function() {
+            currentXhr = null;
+            if (xhr.status === 401) return sessionExpired();
             try {
                 const res = JSON.parse(xhr.responseText);
                 if (res.success) {
                     uploadedFichierUrl = res.fichier_url;
-                    fill.style.width = '100%';
-                    label.textContent = 'Fichier envoyé !';
-                    btn.disabled = false;
-                    btn.textContent = 'PUBLIER SUR LE SITE';
-                } else {
-                    showUploadError(res.error || 'Erreur upload');
-                }
-            } catch(e) {
-                showUploadError('Réponse invalide du serveur');
-            }
+                    uploadedName = res.fichier_url.replace(/^cesai\//, '');
+                    fill.style.width = '100%'; label.textContent = 'Fichier envoyé !';
+                    btn.disabled = false; btn.textContent = 'PUBLIER SUR LE SITE';
+                } else showUploadError(res.error || 'Erreur upload');
+            } catch(e) { showUploadError('Réponse invalide du serveur'); }
         };
-
-        xhr.onerror = function() { showUploadError('Impossible de contacter le serveur'); };
-        xhr.send(formData);
+        xhr.onerror = () => { currentXhr = null; showUploadError('Impossible de contacter le serveur'); };
+        xhr.send(fd);
     }
+    function showUploadError(msg) { flash('msgError', 'Erreur upload : ' + msg, 6000); resetFileUi(); }
 
-    function showUploadError(msg) {
-        document.getElementById('progressWrap').style.display = 'none';
-        const el = document.getElementById('msgError');
-        el.textContent = 'Erreur upload : ' + msg;
-        el.style.display = 'block';
-        setTimeout(() => el.style.display = 'none', 5000);
-        clearFile();
-    }
-
-    // 3. CHARGER LES ACTUALITÉS
+    // ===== LISTE =====
     function fetchNews() {
-        fetch(API_BASE)
-            .then(r => r.json())
+        fetch(API_BASE + '/all', { headers: authHeaders() })
+            .then(r => { if (r.status === 401) { sessionExpired(); throw 0; } return r.json(); })
             .then(res => {
-                if (res.success) renderNews(res.data);
-                else document.getElementById('newsList').innerHTML = '<tr><td colspan="6">Erreur de chargement</td></tr>';
+                if (!res.success) throw new Error();
+                items = res.data;
+                if (!$('titre').value) $('ordre').value = res.next_ordre || 1;
+                renderNews();
             })
-            .catch(() => {
-                document.getElementById('newsList').innerHTML = '<tr><td colspan="6" style="color:red;">Impossible de contacter le serveur</td></tr>';
-            });
+            .catch(e => { if (e !== 0) $('newsList').innerHTML = '<tr><td colspan="6" style="color:red;">Impossible de charger la liste</td></tr>'; });
     }
 
-    function renderNews(data) {
-        if (!data.length) {
-            document.getElementById('newsList').innerHTML = '<tr><td colspan="6" style="text-align:center;color:#888;">Aucun contenu publié</td></tr>';
-            return;
-        }
-        document.getElementById('newsList').innerHTML = data.map(item => {
-            const isVideo = item.type === 'video';
-            const previewSrc = isVideo
-                ? 'https://cdn-icons-png.flaticon.com/512/1384/1384060.png'
-                : MEDIA_ROOT + item.fichier_url;
-            return `<tr>
-                <td><img src="${previewSrc}" class="preview-img" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1384/1384060.png'"></td>
-                <td><strong>${item.titre}</strong></td>
-                <td>${item.type.toUpperCase()}</td>
-                <td>${item.ordre}</td>
-                <td>${item.vedette ? '⭐' : '-'}</td>
-                <td><button class="btn-del" onclick="deleteNews(${item.id})" title="Supprimer"><i class="fas fa-trash"></i></button></td>
-            </tr>`;
+    function renderNews() {
+        if (!items.length) { $('newsList').innerHTML = '<tr><td colspan="6" style="text-align:center;color:#888;">Aucun contenu publié</td></tr>'; return; }
+        $('newsList').innerHTML = items.map(it => {
+            const src = MEDIA_ROOT + encodeURI(it.fichier_url);
+            const prev = it.type === 'video'
+                ? `<video src="${src}#t=0.5" preload="metadata" muted class="preview-img" style="object-fit:cover"></video>`
+                : `<img src="${src}" class="preview-img" loading="lazy" onerror="this.src='${NO_PREVIEW}'">`;
+            return `<tr class="${it.actif ? '' : 'inactive'}">
+                <td>${prev}</td>
+                <td><strong>${esc(it.titre)}</strong>${it.actif ? '' : ' <span class="tag-off">masqué</span>'}</td>
+                <td>${esc(it.type).toUpperCase()}</td>
+                <td>${Number(it.ordre)}</td>
+                <td><button class="btn-star" style="background:none;border:none;cursor:pointer;font-size:18px" onclick="toggleVedette(${Number(it.id)})" title="Basculer la vedette">${it.vedette ? '⭐' : '☆'}</button></td>
+                <td class="actions">
+                    <button onclick="openEdit(${Number(it.id)})" title="Modifier"><i class="fas fa-pen"></i></button>
+                    <button onclick="toggleActif(${Number(it.id)})" title="${it.actif ? 'Masquer' : 'Afficher'}"><i class="fas ${it.actif ? 'fa-eye' : 'fa-eye-slash'}"></i></button>
+                    <button class="btn-del" onclick="deleteNews(${Number(it.id)})" title="Supprimer"><i class="fas fa-trash"></i></button>
+                </td></tr>`;
         }).join('');
     }
 
-    // 4. PUBLIER
-    document.getElementById('addForm').onsubmit = function(e) {
+    // ===== API générique =====
+    function api(method, path, body) {
+        return fetch(API_BASE + path, { method, headers: authHeaders({ 'Content-Type': 'application/json' }), body: body ? JSON.stringify(body) : undefined })
+            .then(r => { if (r.status === 401) { sessionExpired(); throw 0; } return r.json(); });
+    }
+    const byId = id => items.find(i => i.id === id);
+    function toggleVedette(id) { const it = byId(id); api('PUT', '/' + id, { vedette: !it.vedette }).then(r => r.success ? fetchNews() : flash('msgError', r.error)).catch(()=>{}); }
+    function toggleActif(id) { const it = byId(id); api('PUT', '/' + id, { actif: !it.actif }).then(r => r.success ? fetchNews() : flash('msgError', r.error)).catch(()=>{}); }
+
+    // ===== PUBLIER =====
+    $('addForm').onsubmit = function(e) {
         e.preventDefault();
         if (!uploadedFichierUrl) return;
+        const btn = $('btnSubmit'); btn.disabled = true;
         const payload = {
-            titre: document.getElementById('titre').value,
-            type: document.getElementById('type').value,
-            fichier_url: uploadedFichierUrl,
-            ordre: parseInt(document.getElementById('ordre').value) || 1,
-            vedette: document.getElementById('vedette').checked
+            titre: $('titre').value.trim(), type: $('type').value, fichier_url: uploadedFichierUrl,
+            description: $('description').value, ordre: parseInt($('ordre').value) || undefined, vedette: $('vedette').checked
         };
-        fetch(API_BASE, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Api-Key': ADMIN_KEY },
-            body: JSON.stringify(payload)
-        })
-        .then(r => r.json())
-        .then(res => {
+        api('POST', '', payload).then(res => {
             if (res.success) {
-                e.target.reset();
-                clearFile();
-                document.getElementById('msgSuccess').style.display = 'block';
-                setTimeout(() => document.getElementById('msgSuccess').style.display = 'none', 3000);
-                fetchNews();
-            } else {
-                const el = document.getElementById('msgError');
-                el.textContent = 'Erreur: ' + (res.error || 'Inconnue');
-                el.style.display = 'block';
-                setTimeout(() => el.style.display = 'none', 4000);
-            }
-        })
-        .catch(() => {
-            const el = document.getElementById('msgError');
-            el.textContent = 'Impossible de contacter le serveur';
-            el.style.display = 'block';
-        });
+                uploadedName = null; // publié : ne plus supprimer
+                e.target.reset(); resetFileUi();
+                flash('msgSuccess', null, 3000); fetchNews();
+            } else { btn.disabled = false; flash('msgError', 'Erreur : ' + (res.error || 'Inconnue')); }
+        }).catch(e2 => { if (e2 !== 0) { btn.disabled = false; flash('msgError', 'Impossible de contacter le serveur'); } });
     };
 
-    // 5. SUPPRIMER
+    // ===== MODIFIER =====
+    function openEdit(id) {
+        const it = byId(id); editId = id;
+        $('eTitre').value = it.titre; $('eDesc').value = it.description || ''; $('eOrdre').value = it.ordre;
+        $('eVedette').checked = !!it.vedette; $('eActif').checked = !!it.actif;
+        $('eErr').style.display = 'none'; $('editModal').style.display = 'flex';
+    }
+    function closeEdit() { $('editModal').style.display = 'none'; editId = null; }
+    function saveEdit() {
+        const body = { titre: $('eTitre').value.trim(), description: $('eDesc').value, ordre: parseInt($('eOrdre').value), vedette: $('eVedette').checked, actif: $('eActif').checked };
+        if (!body.titre) return flash('eErr', 'Le titre est obligatoire');
+        api('PUT', '/' + editId, body).then(r => {
+            if (r.success) { closeEdit(); fetchNews(); } else flash('eErr', r.error || 'Erreur');
+        }).catch(()=>{});
+    }
+
+    // ===== SUPPRIMER =====
     function deleteNews(id) {
-        if (!confirm('Supprimer ce contenu ?')) return;
-        fetch(API_BASE + '/' + id, {
-            method: 'DELETE',
-            headers: { 'X-Api-Key': ADMIN_KEY }
-        })
-        .then(r => r.json())
-        .then(res => { if (res.success) fetchNews(); });
+        const it = byId(id);
+        if (!confirm('Supprimer définitivement « ' + it.titre + ' » ?')) return;
+        api('DELETE', '/' + id).then(r => r.success ? fetchNews() : flash('msgError', r.error || 'Suppression impossible')).catch(()=>{});
     }
 </script>
 <script>
