@@ -115,7 +115,7 @@
         <br>
         <form id="addForm" class="grid-form">
             <input type="text" id="titre" placeholder="Titre de l'actu" required>
-            <select id="type">
+            <select id="type" disabled title="Détecté automatiquement selon le fichier">
                 <option value="flyer">📸 Flyer / Photo</option>
                 <option value="video">🎥 Vidéo</option>
             </select>
@@ -346,7 +346,7 @@
         if (!uploadedFichierUrl) return;
         const btn = $('btnSubmit'); btn.disabled = true;
         const payload = {
-            titre: $('titre').value.trim(), type: $('type').value, fichier_url: uploadedFichierUrl,
+            titre: $('titre').value.trim(), type: /\.(mp4|webm)$/i.test(uploadedFichierUrl) ? 'video' : 'flyer', fichier_url: uploadedFichierUrl,
             description: $('description').value, ordre: parseInt($('ordre').value) || undefined, vedette: $('vedette').checked
         };
         api('POST', '', payload).then(res => {
